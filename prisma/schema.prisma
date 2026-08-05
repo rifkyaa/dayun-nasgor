@@ -1,0 +1,136 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ==========================================
+// 1. ENUMS (Tipe Data Terstruktur)
+// ==========================================
+
+enum OrderType {
+  DINE_IN
+  TAKE_AWAY
+}
+
+enum OrderStatus {
+  PENDING      // Pesanan baru masuk (Menunggu konfirmasi/pembayaran)
+  DITERIMA     // Pesanan masuk ke antrean aktif
+  DIMASAK      // Sedang dimasak oleh koki
+  SELESAI      // Pesanan selesai & disajikan/diantarkan
+  BATAL        // Pesanan dibatalkan
+}
+
+enum PaymentMethod {
+  QRIS
+  TUNAI_KASIR
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+}
+
+enum Role {
+  SUPER_ADMIN
+  KITCHEN_STAFF
+  KASIR
+}
+
+// ==========================================
+// 2. USER / STAFF MODEL (Credentials + JWT)
+// ==========================================
+
+model User {
+  id        String   @id @default(cuid())
+  name      String   // e.g. "Mang Dayun"
+  username  String   @unique // Dipakai untuk login
+  password  String   // Hashed password (Bcrypt)
+  role      Role     @default(KITCHEN_STAFF)
+  email     String?  @unique
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+// ==========================================
+// 3. MANAJEMEN MENU
+// ==========================================
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   // e.g. "Otokowok", "Nasi Goreng", "Mie/Rebus", "Minuman"
+  slug      String   @unique
+  menus     Menu[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Menu {
+  id           String   @id @default(cuid())
+  categoryId   String
+  name         String   // e.g. "Nasi Otokowok Chicken Katsu"
+  description  String?  @db.Text
+  price        Int      // e.g. 25000
+  imageUrl     String?  // URL gambar dari Cloudinary
+  isAvailable  Boolean  @default(true) // Status stok menu (Tersedia/Habis)
+  isBestSeller Boolean  @default(false)
+  category   Category    @relation(fields: [categoryId], references: [id])
+  orderItems OrderItem[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+// ==========================================
+// 4. PEMESANAN & ANTREAN FCFS (CORE SKRIPSI)
+// ==========================================
+
+model Order {
+  id            String        @id @default(cuid())
+  orderNumber   String        // e.g. "#A041" (Format unik harian)
+  customerName  String        // e.g. "Bpk. Ahmad"
+  orderType     OrderType     @default(DINE_IN) // DINE_IN atau TAKE_AWAY
+  tableNumber   String?       // e.g. "T-12" (null jika TAKE_AWAY)
+  status        OrderStatus   @default(PENDING)
+  paymentMethod PaymentMethod @default(QRIS)
+  paymentStatus PaymentStatus @default(UNPAID)
+  subtotal      Int
+  tax           Int           @default(0)
+  totalAmount   Int
+  createdAt     DateTime      @default(now()) 
+  updatedAt     DateTime      @updatedAt
+  items         OrderItem[]
+  logs          QueueLog[]
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  menuId    String
+  quantity  Int      // Jumlah porsi
+  price     Int      // Harga saat dibeli
+  note      String?  // Catatan pedas/khusus e.g. "Pedes Sedang, Tanpa Acar"
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menu      Menu     @relation(fields: [menuId], references: [id])
+}
+
+// ==========================================
+// 5. AUDIT LOG ANTREAN (BAHAN ANALYSIS BAB 4)
+// ==========================================
+
+model QueueLog {
+  id        String      @id @default(cuid())
+  orderId   String
+  status    OrderStatus // Log perubahan status pesanan
+  notes     String?     // e.g. "Dapur menekan Mulai Masak"
+  createdAt DateTime    @default(now()) // Timestamp perubahan status
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
