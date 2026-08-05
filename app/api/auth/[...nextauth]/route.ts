@@ -1,11 +1,7 @@
 import NextAuth, { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import { PrismaClient, Role } from '@prisma/client'
-import { PrismaMariaDb } from '@prisma/adapter-mariadb'
+import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
-
-const adapter = new PrismaMariaDb(process.env.DATABASE_URL!)
-const prisma = new PrismaClient({ adapter })
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -20,6 +16,7 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Mohon isi username dan password!')
         }
 
+        // Menggunakan instance prisma singleton dari @/lib/prisma
         const user = await prisma.user.findUnique({
           where: { username: credentials.username },
         })
