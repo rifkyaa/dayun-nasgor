@@ -69,14 +69,14 @@ export default function CartSidebar({
         />
       )}
 
-      {/* Cart Drawer */}
+      {/* Cart Drawer - FIX: Menggunakan h-[100dvh] agar fleksibel terhadap address bar browser HP */}
       <aside
-        className={`fixed lg:sticky top-0 right-0 h-screen w-full sm:w-96 lg:w-80 xl:w-96 bg-white border-l border-gray-100 shadow-2xl lg:shadow-none z-50 lg:z-auto flex flex-col justify-between shrink-0 transition-transform duration-300 ease-in-out ${
+        className={`fixed lg:sticky top-0 right-0 h-[100dvh] lg:h-screen w-full sm:w-96 lg:w-80 xl:w-96 bg-white border-l border-gray-100 shadow-2xl lg:shadow-none z-50 lg:z-auto flex flex-col justify-between shrink-0 transition-transform duration-300 ease-in-out ${
           isOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
         }`}
       >
         {/* Cart Header */}
-        <div className="p-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+        <div className="p-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
           <h3 className="text-lg font-bold text-[#7A1517]">Pesanan Saya</h3>
           <button
             onClick={onClose}
@@ -175,9 +175,9 @@ export default function CartSidebar({
           )}
         </div>
 
-        {/* Footer Checkout */}
+        {/* Footer Checkout - FIX: Menambahkan pb-8 lg:pb-4 agar tombol tidak tertutup gesture bar / browser bar HP */}
         {cart.length > 0 && (
-          <div className="p-4 bg-gray-50/90 border-t border-gray-100 space-y-3 shrink-0">
+          <div className="p-4 pb-8 lg:pb-4 bg-gray-50/90 border-t border-gray-100 space-y-3 shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
             <div className="space-y-1 text-xs text-slate-600">
               <div className="flex justify-between">
                 <span>Subtotal</span>
@@ -207,7 +207,7 @@ export default function CartSidebar({
                   }`}
                 >
                   <QrCode size={15} />
-                  <span className="text-[10px]">QRIS / DIGITAL</span>
+                  <span className="text-[10px]">QRIS</span>
                 </button>
 
                 <button
@@ -229,7 +229,7 @@ export default function CartSidebar({
             <button
               onClick={onSubmitOrder}
               disabled={!isFormValid}
-              className={`w-full py-3 rounded-xl font-bold flex flex-col items-center justify-center transition-all shadow-md ${
+              className={`w-full py-3.5 rounded-xl font-bold flex flex-col items-center justify-center transition-all shadow-md ${
                 !isFormValid
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
                   : 'bg-[#7A1517] hover:bg-[#5B0E10] text-white active:scale-[0.98]'
