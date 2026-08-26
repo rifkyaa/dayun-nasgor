@@ -10,7 +10,7 @@ export async function GET() {
     const todayEnd = new Date()
     todayEnd.setHours(23, 59, 59, 999)
 
-    // 1. Ambil SEMUA pesanan hari ini untuk tabel daftar pemesan
+    // 1. Ambil SEMUA pesanan hari ini beserta Menu dan Kategori
     const allTodayOrders = await prisma.order.findMany({
       where: {
         createdAt: {
@@ -20,10 +20,14 @@ export async function GET() {
       },
       include: {
         items: {
-          include: { menu: true },
+          include: { 
+            menu: {
+              include: { category: true } // <-- DITAMBAHKAN AGAR KATEGORI TERBACA
+            } 
+          },
         },
       },
-      orderBy: { createdAt: 'desc' }, // Yang terbaru di paling atas
+      orderBy: { createdAt: 'desc' },
     })
 
     // Filter pesanan yang sudah SELESAI saja untuk hitung Omset & Top Menu
@@ -59,9 +63,13 @@ export async function GET() {
       const orderItems = order.items || (order as any).orderItems || []
       orderItems.forEach((item: any) => {
         const menuId = item.menuId || item.menu?.id
+        if (!menuId) return
+
         const menuName = item.menu?.name || 'Menu Dayun'
         const catName = item.menu?.category?.name || 'Nasgor'
-        const img = item.menu?.imageUrl || item.menu?.image || ''
+        
+        // Ambil imageUrl terbaru dari relasi menu
+        const img = item.menu?.imageUrl || item.menu?.image || '/images/menus/default.jpg'
 
         if (!menuSalesMap[menuId]) {
           menuSalesMap[menuId] = {
@@ -71,7 +79,13 @@ export async function GET() {
             sold: 0,
             image: img,
           }
+        } else {
+          // Pastikan image di-update jika sebelumnya kosong
+          if (!menuSalesMap[menuId].image && img) {
+            menuSalesMap[menuId].image = img
+          }
         }
+
         menuSalesMap[menuId].sold += item.quantity || 1
       })
     })

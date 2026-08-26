@@ -11,7 +11,8 @@ import {
   AlertCircle,
   RefreshCw,
   XCircle,
-  UtensilsCrossed
+  UtensilsCrossed,
+  Lock
 } from 'lucide-react'
 
 interface OrderItem {
@@ -46,7 +47,7 @@ export default function AntreanPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isUpdating, setIsUpdating] = useState(false)
 
-  // 1. Fetch Data Antrean Real-time
+  // 1. Fetch Data Antrean Real-time (FCFS)
   const fetchOrders = async () => {
     try {
       const res = await fetch('/api/orders')
@@ -73,7 +74,6 @@ export default function AntreanPage() {
 
   // 2. Handler Update Status
   const handleUpdateStatus = async (orderId: string, nextStatus: string) => {
-    // Jika aksi Pembatalan, panggil Toast Konfirmasi Maroon
     if (nextStatus === 'BATAL') {
       showToast.confirmCancel(
         'Konfirmasi Pembatalan',
@@ -83,7 +83,6 @@ export default function AntreanPage() {
       return
     }
 
-    // Untuk status lainnya (DITERIMA, DIMASAK, SELESAI) langsung eksekusi
     await executeStatusUpdate(orderId, nextStatus)
   }
 
@@ -99,13 +98,12 @@ export default function AntreanPage() {
 
       if (!res.ok) throw new Error('Gagal update status')
 
-      // Notifikasi Toast Sesuai Brand Identity
       if (nextStatus === 'DITERIMA') {
         showToast.success('Pesanan Diterima!', 'Pesanan telah masuk ke daftar antrean dapur.')
       } else if (nextStatus === 'DIMASAK') {
-        showToast.info('Mulai Memasak! 👨‍🍳', 'Status pesanan diubah menjadi Dimasak.')
+        showToast.success('Mulai Memasak!', 'Status pesanan diubah menjadi Dimasak.')
       } else if (nextStatus === 'SELESAI') {
-        showToast.success('Pesanan Selesai! 🎉', 'Makanan siap disajikan ke pelanggan.')
+        showToast.success('Pesanan Selesai!', 'Makanan siap disajikan ke pelanggan.')
       } else if (nextStatus === 'BATAL') {
         showToast.error('Pesanan Dibatalkan', 'Pesanan telah berhasil dibatalkan.')
       }
@@ -118,7 +116,7 @@ export default function AntreanPage() {
     }
   }
 
-  // Helper Menghitung Timer Tunggu
+  // Helper Timer Tunggu
   const getWaitingTime = (createdAtStr: string) => {
     const created = new Date(createdAtStr).getTime()
     const now = new Date().getTime()
@@ -137,6 +135,9 @@ export default function AntreanPage() {
   })
 
   const activeOrder = orders.find(o => o.id === selectedOrderId) || filteredOrders[0]
+
+  // Cek apakah activeOrder yang terpilih di panel kanan merupakan antrean nomor 1
+  const isActiveOrderFirstInQueue = activeOrder ? orders.findIndex(o => o.id === activeOrder.id) === 0 : false
 
   return (
     <div className="space-y-6">
@@ -217,9 +218,12 @@ export default function AntreanPage() {
           
           {/* LEFT COLUMN: Queue Cards List */}
           <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 items-stretch">
-            {filteredOrders.map((order, index) => {
+            {filteredOrders.map((order) => {
               const isSelected = order.id === selectedOrderId
-              const isUrutanSatu = index === 0
+              
+              // 🧠 LOGIKA FCFS: Cek posisi antrean asli di array `orders` utama
+              const realQueueIndex = orders.findIndex(o => o.id === order.id)
+              const isFirstInQueue = realQueueIndex === 0
 
               return (
                 <div
@@ -233,12 +237,22 @@ export default function AntreanPage() {
                 >
                   {/* Top Content Area */}
                   <div>
-                    {/* Badge URUTAN #1 (FCFS Highlight) */}
-                    {isUrutanSatu && (
-                      <div className="inline-flex items-center gap-1.5 bg-amber-400 text-slate-950 px-3 py-1 rounded-full text-xs font-bold mb-3 shadow-2xs">
-                        <span>🏠 URUTAN #1 (FCFS)</span>
-                      </div>
-                    )}
+                    {/* Badge Indicator Position (FCFS Highlight) */}
+                    <div className="flex items-center justify-between mb-3">
+                      {isFirstInQueue ? (
+                        <span className="inline-flex items-center gap-1.5 bg-amber-400 text-slate-950 px-3 py-1 rounded-full text-[11px] font-extrabold shadow-2xs">
+                          <span>🔥 PRIORITAS UTAMA (#1)</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 bg-gray-100 text-slate-600 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                          <span>Antrean #{realQueueIndex + 1}</span>
+                        </span>
+                      )}
+
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        {order.status}
+                      </span>
+                    </div>
 
                     {/* Header Card */}
                     <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-3">
@@ -272,60 +286,104 @@ export default function AntreanPage() {
                     </div>
                   </div>
 
-                  {/* Bottom Action Area (Sticky at Bottom) */}
+                  {/* Bottom Action Area (FCFS Non-Preemptive Guard) */}
                   <div className="mt-auto pt-3 border-t border-gray-100 flex items-center gap-2">
                     
-                    {/* Tombol Utama (Selalu Merah Maroon Konsisten) */}
+                    {/* TOMBOL UTAMA (PENDING -> DITERIMA) */}
                     {order.status === 'PENDING' && (
                       <button
-                        disabled={isUpdating}
+                        disabled={isUpdating || !isFirstInQueue} // 👈 LOCK JIKA BUKAN ANTREAN PERTAMA
                         onClick={(e) => {
                           e.stopPropagation()
-                          handleUpdateStatus(order.id, 'DITERIMA')
+                          if (isFirstInQueue) handleUpdateStatus(order.id, 'DITERIMA')
                         }}
-                        className="flex-1 bg-[#7A1517] hover:bg-[#5B0E10] text-white py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] cursor-pointer shadow-xs disabled:opacity-50"
+                        className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-xs ${
+                          isFirstInQueue
+                            ? 'bg-[#7A1517] hover:bg-[#5B0E10] text-white active:scale-[0.98] cursor-pointer'
+                            : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-80'
+                        }`}
+                        title={!isFirstInQueue ? 'Selesaikan pesanan antrean #1 terlebih dahulu' : ''}
                       >
-                        <CheckCircle2 size={15} />
-                        <span>Terima Pesanan</span>
+                        {isFirstInQueue ? (
+                          <>
+                            <CheckCircle2 size={15} />
+                            <span>Terima Pesanan</span>
+                          </>
+                        ) : (
+                          <>
+                            <Lock size={13} />
+                            <span>Menunggu Antrean Depan</span>
+                          </>
+                        )}
                       </button>
                     )}
 
+                    {/* TOMBOL UTAMA (DITERIMA -> DIMASAK) */}
                     {order.status === 'DITERIMA' && (
                       <button
-                        disabled={isUpdating}
+                        disabled={isUpdating || !isFirstInQueue} // 👈 LOCK JIKA BUKAN ANTREAN PERTAMA
                         onClick={(e) => {
                           e.stopPropagation()
-                          handleUpdateStatus(order.id, 'DIMASAK')
+                          if (isFirstInQueue) handleUpdateStatus(order.id, 'DIMASAK')
                         }}
-                        className="flex-1 bg-[#7A1517] hover:bg-[#5B0E10] text-white py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] cursor-pointer shadow-xs disabled:opacity-50"
+                        className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-xs ${
+                          isFirstInQueue
+                            ? 'bg-[#7A1517] hover:bg-[#5B0E10] text-white active:scale-[0.98] cursor-pointer'
+                            : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-80'
+                        }`}
+                        title={!isFirstInQueue ? 'Selesaikan pesanan antrean #1 terlebih dahulu' : ''}
                       >
-                        <ChefHat size={15} />
-                        <span>Mulai Masak</span>
+                        {isFirstInQueue ? (
+                          <>
+                            <ChefHat size={15} />
+                            <span>Mulai Masak</span>
+                          </>
+                        ) : (
+                          <>
+                            <Lock size={13} />
+                            <span>Menunggu Antrean Depan</span>
+                          </>
+                        )}
                       </button>
                     )}
 
+                    {/* TOMBOL UTAMA (DIMASAK -> SELESAI) */}
                     {order.status === 'DIMASAK' && (
                       <button
-                        disabled={isUpdating}
+                        disabled={isUpdating || !isFirstInQueue} // 👈 LOCK JIKA BUKAN ANTREAN PERTAMA
                         onClick={(e) => {
                           e.stopPropagation()
-                          handleUpdateStatus(order.id, 'SELESAI')
+                          if (isFirstInQueue) handleUpdateStatus(order.id, 'SELESAI')
                         }}
-                        className="flex-1 bg-[#7A1517] hover:bg-[#5B0E10] text-white py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] cursor-pointer shadow-xs disabled:opacity-50"
+                        className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-xs ${
+                          isFirstInQueue
+                            ? 'bg-[#7A1517] hover:bg-[#5B0E10] text-white active:scale-[0.98] cursor-pointer'
+                            : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-80'
+                        }`}
+                        title={!isFirstInQueue ? 'Selesaikan pesanan antrean #1 terlebih dahulu' : ''}
                       >
-                        <UtensilsCrossed size={15} />
-                        <span>Sajikan (Selesai)</span>
+                        {isFirstInQueue ? (
+                          <>
+                            <UtensilsCrossed size={15} />
+                            <span>Sajikan (Selesai)</span>
+                          </>
+                        ) : (
+                          <>
+                            <Lock size={13} />
+                            <span>Menunggu Antrean Depan</span>
+                          </>
+                        )}
                       </button>
                     )}
 
-                    {/* Tombol Batalkan Berbasis Teks + Ikon (Ghost Red) */}
+                    {/* Tombol Batalkan (Selalu Aktif) */}
                     <button
                       disabled={isUpdating}
                       onClick={(e) => {
                         e.stopPropagation()
                         handleUpdateStatus(order.id, 'BATAL')
                       }}
-                      className="px-3 py-2.5 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-all cursor-pointer border border-red-100 flex items-center gap-1"
+                      className="px-3 py-2.5 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-all cursor-pointer border border-red-100 flex items-center gap-1 shrink-0"
                       title="Batalkan Pesanan"
                     >
                       <XCircle size={15} />
@@ -412,45 +470,84 @@ export default function AntreanPage() {
                   </div>
                 </div>
 
-                {/* Main & Cancel Action Buttons */}
+                {/* Main & Cancel Action Buttons Panel Kanan (Menyesuaikan Lock FCFS) */}
                 <div className="flex items-center gap-2">
                   {activeOrder.status === 'PENDING' && (
                     <button
-                      disabled={isUpdating}
-                      onClick={() => handleUpdateStatus(activeOrder.id, 'DITERIMA')}
-                      className="flex-1 bg-[#7A1517] hover:bg-[#5B0E10] text-white py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.98] disabled:opacity-50"
+                      disabled={isUpdating || !isActiveOrderFirstInQueue}
+                      onClick={() => isActiveOrderFirstInQueue && handleUpdateStatus(activeOrder.id, 'DITERIMA')}
+                      className={`flex-1 py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-xs ${
+                        isActiveOrderFirstInQueue
+                          ? 'bg-[#7A1517] hover:bg-[#5B0E10] text-white active:scale-[0.98] cursor-pointer'
+                          : 'bg-gray-200 text-gray-400 border border-gray-300 cursor-not-allowed opacity-70'
+                      }`}
                     >
-                      <CheckCircle2 size={16} />
-                      <span>Terima Pesanan</span>
+                      {isActiveOrderFirstInQueue ? (
+                        <>
+                          <CheckCircle2 size={16} />
+                          <span>Terima Pesanan</span>
+                        </>
+                      ) : (
+                        <>
+                          <Lock size={14} />
+                          <span>Menunggu Antrean Depan</span>
+                        </>
+                      )}
                     </button>
                   )}
 
                   {activeOrder.status === 'DITERIMA' && (
                     <button
-                      disabled={isUpdating}
-                      onClick={() => handleUpdateStatus(activeOrder.id, 'DIMASAK')}
-                      className="flex-1 bg-[#7A1517] hover:bg-[#5B0E10] text-white py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.98] disabled:opacity-50"
+                      disabled={isUpdating || !isActiveOrderFirstInQueue}
+                      onClick={() => isActiveOrderFirstInQueue && handleUpdateStatus(activeOrder.id, 'DIMASAK')}
+                      className={`flex-1 py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-xs ${
+                        isActiveOrderFirstInQueue
+                          ? 'bg-[#7A1517] hover:bg-[#5B0E10] text-white active:scale-[0.98] cursor-pointer'
+                          : 'bg-gray-200 text-gray-400 border border-gray-300 cursor-not-allowed opacity-70'
+                      }`}
                     >
-                      <ChefHat size={16} />
-                      <span>Mulai Masak</span>
+                      {isActiveOrderFirstInQueue ? (
+                        <>
+                          <ChefHat size={16} />
+                          <span>Mulai Masak</span>
+                        </>
+                      ) : (
+                        <>
+                          <Lock size={14} />
+                          <span>Menunggu Antrean Depan</span>
+                        </>
+                      )}
                     </button>
                   )}
 
                   {activeOrder.status === 'DIMASAK' && (
                     <button
-                      disabled={isUpdating}
-                      onClick={() => handleUpdateStatus(activeOrder.id, 'SELESAI')}
-                      className="flex-1 bg-[#7A1517] hover:bg-[#5B0E10] text-white py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.98] disabled:opacity-50"
+                      disabled={isUpdating || !isActiveOrderFirstInQueue}
+                      onClick={() => isActiveOrderFirstInQueue && handleUpdateStatus(activeOrder.id, 'SELESAI')}
+                      className={`flex-1 py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-xs ${
+                        isActiveOrderFirstInQueue
+                          ? 'bg-[#7A1517] hover:bg-[#5B0E10] text-white active:scale-[0.98] cursor-pointer'
+                          : 'bg-gray-200 text-gray-400 border border-gray-300 cursor-not-allowed opacity-70'
+                      }`}
                     >
-                      <UtensilsCrossed size={16} />
-                      <span>Sajikan (Selesai)</span>
+                      {isActiveOrderFirstInQueue ? (
+                        <>
+                          <UtensilsCrossed size={16} />
+                          <span>Sajikan (Selesai)</span>
+                        </>
+                      ) : (
+                        <>
+                          <Lock size={14} />
+                          <span>Menunggu Antrean Depan</span>
+                        </>
+                      )}
                     </button>
                   )}
 
                   <button
                     disabled={isUpdating}
                     onClick={() => handleUpdateStatus(activeOrder.id, 'BATAL')}
-                    className="px-4 py-3 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-all cursor-pointer border border-red-200/60 flex items-center gap-1.5"
+                    className="px-4 py-3 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-all cursor-pointer border border-red-200/60 flex items-center gap-1.5 shrink-0"
                     title="Batalkan Pesanan"
                   >
                     <XCircle size={16} />

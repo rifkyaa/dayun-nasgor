@@ -54,7 +54,7 @@ export default function CustomerLandingPage() {
                 price: menu.price,
                 image: menu.imageUrl || menu.image || 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=600&q=80',
                 isBestSeller: menu.isBestSeller,
-                isAvailable: menu.isAvailable ?? true, // <-- FIX UTAMA: Pass properti isAvailable ke objek MenuItem!
+                isAvailable: menu.isAvailable ?? true, 
               })
             })
           }
@@ -181,11 +181,25 @@ export default function CustomerLandingPage() {
     }
   }
 
-  const filteredMenu = menuItems.filter((item) => {
-    const matchCat = selectedCategory === 'Semua' || item.category === selectedCategory
-    const matchSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchCat && matchSearch
-  })
+  const filteredMenu = menuItems
+    .filter((item) => {
+      const matchCat = selectedCategory === 'Semua' || item.category === selectedCategory
+      const matchSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase())
+      return matchCat && matchSearch
+    })
+    .sort((a, b) => {
+      // 1. Utamakan stok yang TERSEDIA di atas yang HABIS
+      const aAvailable = a.isAvailable ? 1 : 0
+      const bAvailable = b.isAvailable ? 1 : 0
+      if (bAvailable !== aAvailable) {
+        return bAvailable - aAvailable
+      }
+
+      // 2. Jika sama-sama tersedia, utamakan yang BEST SELLER di atas
+      const aBest = a.isBestSeller ? 1 : 0
+      const bBest = b.isBestSeller ? 1 : 0
+      return bBest - aBest
+    })
 
   const totalCartCount = cart.reduce((sum, item) => sum + item.qty, 0)
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0)

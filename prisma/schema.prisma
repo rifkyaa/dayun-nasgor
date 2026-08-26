@@ -80,7 +80,7 @@ model Menu {
   name         String   // e.g. "Nasi Otokowok Chicken Katsu"
   description  String?  @db.Text
   price        Int      // e.g. 25000
-  imageUrl     String?  // URL gambar dari Cloudinary
+  imageUrl     String?  
   isAvailable  Boolean  @default(true) // Status stok menu (Tersedia/Habis)
   isBestSeller Boolean  @default(false)
   category   Category    @relation(fields: [categoryId], references: [id])

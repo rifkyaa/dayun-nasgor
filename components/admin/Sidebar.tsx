@@ -14,7 +14,6 @@ import {
   LogOut, 
   ChevronLeft, 
   ChevronRight,
-  UserCog,
   X
 } from 'lucide-react'
 
@@ -56,7 +55,7 @@ export default function Sidebar({ isMobileOpen, setIsMobileOpen }: SidebarProps)
 
   const handleLogout = async () => {
     await signOut({
-      callbackUrl: '/admin/login', // Redirect otomatis ke halaman login setelah session dihapus
+      callbackUrl: '/admin/login',
     })
   }
   
@@ -65,12 +64,13 @@ export default function Sidebar({ isMobileOpen, setIsMobileOpen }: SidebarProps)
       {isMobileOpen && (
         <div
           onClick={() => setIsMobileOpen(false)}
-          className="lg:hidden fixed inset-0 bg-black/50 z-40 backdrop-blur-sm transition-opacity"
+          className="lg:hidden fixed inset-0 bg-black/50 z-40 backdrop-blur-xs transition-opacity"
         />
       )}
 
       <aside
-        className={`fixed lg:sticky top-0 left-0 h-screen bg-[#7A1517] text-white flex flex-col justify-between transition-all duration-300 ease-in-out z-50 shrink-0 shadow-xl lg:shadow-none ${
+        // 💥 DITAMBAHKAN h-[100dvh] & overflow-hidden 💥
+        className={`fixed lg:sticky top-0 left-0 h-[100dvh] bg-[#7A1517] text-white flex flex-col justify-between transition-all duration-300 ease-in-out z-50 shrink-0 shadow-xl lg:shadow-none overflow-hidden ${
           isCollapsed ? 'lg:w-20' : 'lg:w-64'
         } ${
           isMobileOpen
@@ -78,15 +78,18 @@ export default function Sidebar({ isMobileOpen, setIsMobileOpen }: SidebarProps)
             : '-translate-x-full lg:translate-x-0'
         }`}
       >
+        {/* Toggle Collapse Desktop Button */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="hidden lg:flex absolute -right-3 top-8 bg-white text-[#7A1517] p-1.5 rounded-full shadow-md border border-gray-200 hover:bg-gray-100 transition-transform active:scale-95 z-30"
+          className="hidden lg:flex absolute -right-3 top-8 bg-white text-[#7A1517] p-1.5 rounded-full shadow-md border border-gray-200 hover:bg-gray-100 transition-transform active:scale-95 z-30 cursor-pointer"
           title={isCollapsed ? "Perluas Sidebar" : "Kecilkan Sidebar"}
         >
           {isCollapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
         </button>
 
-        <div className="flex-1 overflow-y-auto">
+        {/* TOP & NAV SCROLLABLE AREA */}
+        <div className="flex-1 overflow-y-auto min-h-0">
+          {/* Header Brand */}
           <div className="p-5 flex items-center justify-between border-b border-dashed border-white/20">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 relative shrink-0 flex items-center justify-center">
@@ -120,13 +123,14 @@ export default function Sidebar({ isMobileOpen, setIsMobileOpen }: SidebarProps)
 
             <button
               onClick={() => setIsMobileOpen(false)}
-              className="lg:hidden p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+              className="lg:hidden p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
             >
               <X size={20} />
             </button>
           </div>
 
-          <nav className="mt-4 space-y-0.5">
+          {/* Nav Items */}
+          <nav className="mt-4 space-y-0.5 pb-4">
             {navItems.map((item) => {
               const Icon = item.icon
               const isActive = pathname.startsWith(item.href)
@@ -162,15 +166,15 @@ export default function Sidebar({ isMobileOpen, setIsMobileOpen }: SidebarProps)
           </nav>
         </div>
 
-        <div className="border-t border-dashed border-white/20 mb-4 pt-2">
+        <div className="shrink-0 border-t border-dashed border-white/20 p-3 bg-[#7A1517]">
           <button
             onClick={handleLogout}
-            className={`w-full flex items-center gap-4 px-6 py-3 text-white/70 hover:bg-red-900/30 hover:text-white transition-colors text-sm font-semibold cursor-pointer ${
+            className={`w-full flex items-center gap-4 px-4 py-3 text-white/80 hover:bg-red-900/40 hover:text-white rounded-xl transition-colors text-sm font-semibold cursor-pointer ${
               isCollapsed && !isMobileOpen ? 'lg:justify-center lg:px-0' : ''
             }`}
             title={isCollapsed && !isMobileOpen ? "Logout" : undefined}
           >
-            <LogOut size={20} className="text-red-300" />
+            <LogOut size={20} className="text-red-300 shrink-0" />
             {(!isCollapsed || isMobileOpen) && <span>Logout</span>}
           </button>
         </div>

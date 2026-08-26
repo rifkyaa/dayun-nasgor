@@ -12,7 +12,8 @@ interface MenuItem {
   categoryRelation?: { name: string } | null
   price: number
   isAvailable: boolean
-  image: string
+  imageUrl?: string | null
+  image?: string | null
   description?: string | null
 }
 
@@ -95,9 +96,9 @@ export default function KelolaMenuPage() {
       setEditingMenu(menu)
       setFormData({
         name: menu.name,
-        category: getCategoryName(menu), // <-- Pakai helper ini agar bertipe string pasti
+        category: getCategoryName(menu),
         price: String(menu.price),
-        image: menu.image || '',
+        image: menu.imageUrl || menu.image || '', // <-- AMBIL imageUrl
         description: menu.description || '',
         isAvailable: menu.isAvailable,
       })
@@ -306,12 +307,12 @@ export default function KelolaMenuPage() {
             >
               <div>
                 {/* Image Container with Category Badge & Action Buttons */}
-                <div className="relative h-44 w-full bg-gray-100 overflow-hidden">
+                <div className="relative h-44 w-full bg-[#FFFFFF] overflow-hidden">
                   <Image
-                    src={item.image || 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=600&q=80'}
+                    src={item.imageUrl || item.image || '/images/menus/default.jpg'}
                     alt={item.name}
                     fill
-                    className={`object-cover transition-transform duration-300 group-hover:scale-105 ${
+                    className={`object-contain transition-transform duration-300 group-hover:scale-105 ${
                       !item.isAvailable ? 'grayscale opacity-75' : ''
                     }`}
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"

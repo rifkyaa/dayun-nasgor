@@ -37,12 +37,12 @@ export default function MenuCard({ item, onAddToCart }: MenuCardProps) {
     >
       <div>
         {/* Food Image */}
-        <div className="relative h-44 w-full bg-gray-100 overflow-hidden">
+        <div className="relative h-44 w-full bg-[#FFFFFF] overflow-hidden">
           <Image
             src={item.image || 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=600&q=80'}
             alt={item.name}
             fill
-            className={`object-cover transition-transform duration-300 ${
+            className={`object-contain transition-transform duration-300 ${
               isAvailable ? 'group-hover:scale-105' : 'grayscale'
             }`}
             sizes="(max-width: 768px) 100vw, 33vw"

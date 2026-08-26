@@ -1,20 +1,17 @@
 'use client'
 
 import React, { useEffect, useState, use } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { 
   Clock, 
   CheckCircle2, 
   ChefHat, 
-  Flame, 
-  ArrowLeft, 
-  QrCode, 
   AlertCircle,
   RefreshCw,
   UtensilsCrossed,
   XCircle,      
-  RotateCcw      
+  RotateCcw,
+  Flame
 } from 'lucide-react'
 
 interface OrderItem {
@@ -38,7 +35,11 @@ interface Order {
   paymentStatus: 'UNPAID' | 'PAID'
   totalAmount: number
   createdAt: string
+  updatedAt: string
   items: OrderItem[]
+  queueAhead?: number
+  queuePosition?: number
+  remainingSeconds?: number
 }
 
 export default function OrderStatusPage({ params }: { params: Promise<{ orderId: string }> }) {
@@ -47,13 +48,17 @@ export default function OrderStatusPage({ params }: { params: Promise<{ orderId:
 
   const [order, setOrder] = useState<Order | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [timeLeft, setTimeLeft] = useState<number>(210) // 210 detik = 3.5 menit
 
   const fetchOrderDetail = async () => {
     try {
       const res = await fetch(`/api/orders/${orderId}`)
       if (res.ok) {
-        const data = await res.json()
+        const data: Order = await res.json()
         setOrder(data)
+        if (typeof data.remainingSeconds === 'number') {
+          setTimeLeft(data.remainingSeconds)
+        }
       }
     } catch (err) {
       console.error('Gagal mengambil data pesanan:', err)
@@ -62,12 +67,23 @@ export default function OrderStatusPage({ params }: { params: Promise<{ orderId:
     }
   }
 
-  // Polling Auto-Refresh status setiap 4 detik
+  // 1. Polling API setiap 4 detik
   useEffect(() => {
     fetchOrderDetail()
     const interval = setInterval(fetchOrderDetail, 4000)
     return () => clearInterval(interval)
   }, [orderId])
+
+  // 2. Countdown Timer Realtime per detik saat DIMASAK
+  useEffect(() => {
+    if (order?.status !== 'DIMASAK' || timeLeft <= 0) return
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => Math.max(0, prev - 1))
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [order?.status, timeLeft])
 
   if (isLoading && !order) {
     return (
@@ -93,7 +109,13 @@ export default function OrderStatusPage({ params }: { params: Promise<{ orderId:
     )
   }
 
-  // Progress Bar Steps (0: PENDING, 1: DITERIMA, 2: DIMASAK, 3: SELESAI)
+  // Helper Format Detik ke MM:SS
+  const formatTimer = (seconds: number) => {
+    const m = Math.floor(seconds / 60)
+    const s = seconds % 60
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+  }
+
   const getStepIndex = (status: string) => {
     switch (status) {
       case 'PENDING': return 0
@@ -109,20 +131,115 @@ export default function OrderStatusPage({ params }: { params: Promise<{ orderId:
   return (
     <div className="min-h-screen bg-[#FDFBF9] p-4 md:p-8 max-w-2xl mx-auto space-y-6">
       
-      {/* Card Utama Status */}
+      {/* CARD UTAMA STATUS */}
       <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-md space-y-6 text-center">
         
-        {/* Banner Nomor Pesanan & Lokasi */}
-        <div className="bg-[#7A1517] text-white p-4 rounded-2xl space-y-1">
-          <p className="text-[11px] text-amber-200 font-bold uppercase tracking-wider">Nomor Antrean Anda</p>
-          <h1 className="text-4xl font-black tracking-tight">{order.orderNumber}</h1>
-          <p className="text-xs text-amber-100/90 font-medium pt-1">
-            {order.orderType === 'DINE_IN' ? `Makan di Tempat (${order.tableNumber || 'Meja'})` : 'Bawa Pulang (Takeaway)'} • {order.customerName}
-          </p>
+        {/* 1. TOP BANNER UTAMA */}
+        <div className="bg-[#7A1517] text-white p-5 rounded-2xl space-y-2 text-center shadow-md">
+          {order.status === 'SELESAI' ? (
+            <div>
+              <p className="text-xs text-amber-200 font-bold uppercase tracking-wider">Status Pesanan</p>
+              <h1 className="text-3xl font-black text-white my-1 uppercase">Siap Disajikan!</h1>
+            </div>
+          ) : order.status === 'BATAL' ? (
+            <div>
+              <p className="text-xs text-red-200 font-bold uppercase tracking-wider">Status Pesanan</p>
+              <h1 className="text-3xl font-black text-white my-1">Pesanan Dibatalkan.</h1>
+            </div>
+          ) : (
+            <div>
+              <p className="text-[11px] text-amber-200 font-bold uppercase tracking-wider">
+                Posisi Antrean Kamu
+              </p>
+              <h1 className="text-5xl font-black tracking-tight text-white my-1">
+                Urutan Ke-{order.queuePosition || 1}
+              </h1>
+              <p className="text-xs text-amber-100/80 font-medium pt-1">
+                {order.queuePosition === 1
+                  ? '🔥 Pesananmu berada di urutan paling depan!'
+                  : `Masih ada ${(order.queuePosition || 1) - 1} pesanan lain di depanmu.`}
+              </p>
+            </div>
+          )}
+
+          {/* Sub Header Kode Struk & Pelanggan */}
+          <div className="pt-3 border-t border-amber-200/20 flex items-center justify-between text-xs text-amber-100/90 font-medium px-2">
+            <span>Kode Struk: <strong className="text-white font-mono">{order.orderNumber}</strong></span>
+            <span>{order.customerName} ({order.orderType === 'DINE_IN' ? `Meja ${order.tableNumber || '-'}` : 'Takeaway'})</span>
+          </div>
         </div>
 
-        {/* Live Stepper Status */}
-        <div className="py-2">
+        {/* 2. DYNAMIC ACTION & FOCUS DISPLAY (DRY: Ditempatkan Terpusat Di Sini) */}
+        {order.status === 'DIMASAK' && (
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-5 text-center space-y-1 animate-in zoom-in-95 duration-300">
+            <div className="inline-flex items-center gap-1.5 bg-amber-500 text-white px-3.5 py-1 rounded-full text-[11px] font-extrabold tracking-wide uppercase shadow-xs">
+              <Flame size={14} className="animate-bounce" />
+              <span>Sedang Dimasak Mang Dayun</span>
+            </div>
+
+            <div className="py-1">
+              <span className="text-5xl font-black tracking-tight text-[#7A1517] font-mono">
+                {formatTimer(timeLeft)}
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-600 font-medium">
+              {timeLeft > 0 
+                ? 'Kuali sedang bergoyang, pesananmu akan segera hangat disajikan!' 
+                : 'Hampir siap! Koki sedang menata piring pesananmu.'}
+            </p>
+          </div>
+        )}
+
+        {(order.status === 'PENDING' || order.status === 'DITERIMA') && (
+          <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-center space-y-1">
+            <p className="text-xs text-slate-600 font-semibold">
+              {order.paymentMethod === 'TUNAI_KASIR' && order.status === 'PENDING'
+                ? 'Mohon bayar di kasir untuk memproses pesananmu.'
+                : (order.queueAhead && order.queueAhead > 0)
+                ? `Ada ${order.queueAhead} pesanan lain di depanmu. Mohon bersabar ya!`
+                : 'Pesananmu dalam urutan paling depan! Menunggu koki mulai memasak.'}
+            </p>
+          </div>
+        )}
+
+        {order.status === 'SELESAI' && (
+          <div className="space-y-3 pt-1">
+            <p className="text-xs text-slate-600 font-medium">
+              {order.orderType === 'DINE_IN' 
+                ? 'Makanan sedang diantarkan ke meja kamu. Selamat menikmati!' 
+                : 'Silakan ambil pesananmu di konter Kasir.'}
+            </p>
+            <Link
+              href="/"
+              className="w-full bg-[#7A1517] hover:bg-[#5B0E10] text-white py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-[0.98]"
+            >
+              <UtensilsCrossed size={16} />
+              <span>Selesai & Pesan Lagi</span>
+            </Link>
+          </div>
+        )}
+
+        {order.status === 'BATAL' && (
+          <div className="space-y-3 pt-1">
+            <div className="flex flex-col items-center gap-1.5">
+              <XCircle size={36} className="text-red-600 shrink-0" />
+              <p className="text-red-600/90 text-xs max-w-sm mx-auto leading-relaxed">
+                Mohon maaf, pesanan kamu telah dibatalkan oleh pihak kasir/dapur. Silakan hubungi kasir atau buat pesanan baru.
+              </p>
+            </div>
+            <Link
+              href="/"
+              className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-[0.98]"
+            >
+              <RotateCcw size={16} />
+              <span>Pesan Ulang / Kembali ke Menu</span>
+            </Link>
+          </div>
+        )}
+        
+        {/* 3. STEPPER PROGRESS VISUAL */}
+        <div className="pt-2 pb-1">
           <div className="flex items-center justify-between relative px-2">
             
             {/* Step 1: PENDING */}
@@ -148,7 +265,7 @@ export default function OrderStatusPage({ params }: { params: Promise<{ orderId:
             {/* Step 3: DIMASAK */}
             <div className="flex flex-col items-center gap-1 z-10">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
-                currentStep >= 2 ? 'bg-[#7A1517] text-white shadow-md' : 'bg-gray-100 text-gray-400'
+                currentStep >= 2 ? 'bg-[#7A1517] text-white shadow-md ring-4 ring-amber-400/30' : 'bg-gray-100 text-gray-400'
               }`}>
                 <ChefHat size={18} />
               </div>
@@ -176,88 +293,9 @@ export default function OrderStatusPage({ params }: { params: Promise<{ orderId:
           </div>
         </div>
 
-        {/* Status Message Dynamic Box */}
-        <div className={`p-4 rounded-2xl text-xs font-semibold space-y-1 ${
-        order.status === 'BATAL' 
-            ? 'bg-red-50 border border-red-200 text-red-900' 
-            : 'bg-amber-50/80 border border-amber-200/60 text-slate-800'
-        }`}>
-        {order.status === 'PENDING' && (
-            <>
-            <p className="font-extrabold text-[#7A1517] text-sm">Pesanan Terkirim! 📩</p>
-            <p className="text-slate-600">
-                {order.paymentMethod === 'TUNAI_KASIR' 
-                ? 'Silakan lakukan pembayaran tunai di kasir untuk memproses pesanan.'
-                : 'Pesananmu sedang menunggu konfirmasi pembayaran dari kasir/dapur.'}
-            </p>
-            </>
-        )}
-
-        {order.status === 'DITERIMA' && (
-            <>
-            <p className="font-extrabold text-[#7A1517] text-sm">Pesanan Diterima! ✅</p>
-            <p className="text-slate-600">Pesanan kamu masuk antrean dapur. Estimasi tunggu: ~10-15 menit.</p>
-            </>
-        )}
-
-        {order.status === 'DIMASAK' && (
-            <>
-            <p className="font-extrabold text-[#7A1517] text-sm flex items-center justify-center gap-1">
-                <span>Sedang Dimasak Koki! 👨‍🍳</span>
-            </p>
-            <p className="text-slate-600">Aroma sedap sedang tercipta di dapur Mang Dayun!</p>
-            </>
-        )}
-
-        {order.status === 'SELESAI' && (
-            <div className="space-y-3 text-center">
-            <div>
-                <p className="font-extrabold text-emerald-700 text-sm">Pesanan Siap Disajikan! 🎉</p>
-                <p className="text-slate-600 mt-0.5">
-                {order.orderType === 'DINE_IN' 
-                    ? 'Makanan sedang diantarkan ke meja kamu. Selamat menikmati!' 
-                    : 'Silakan ambil pesananmu di konter Kasir/Dapur.'}
-                </p>
-            </div>
-
-            <Link
-                href="/"
-                className="w-full bg-[#7A1517] hover:bg-[#5B0E10] text-white py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-[0.98]"
-            >
-                <UtensilsCrossed size={16} />
-                <span>Selesai & Pesan Lagi</span>
-            </Link>
-            </div>
-        )}
-
-        {/* AKSI TAMBAHAN KETIKA PESANAN DIBATALKAN */}
-        {order.status === 'BATAL' && (
-            <div className="space-y-3 text-center py-1">
-            <div className="flex flex-col items-center gap-1.5">
-                <XCircle size={36} className="text-red-600 shrink-0" />
-                <div>
-                <p className="font-extrabold text-red-700 text-sm">Pesanan Dibatalkan ❌</p>
-                <p className="text-red-600/90 text-[11px] mt-1 max-w-sm mx-auto leading-relaxed">
-                    Mohon maaf, pesanan kamu telah dibatalkan oleh pihak kasir/dapur (stok habis atau kendala operasional). Silakan hubungi kasir atau buat pesanan baru.
-                </p>
-                </div>
-            </div>
-
-            {/* TOMBOL KEMBALI DAN PESAN ULANG */}
-            <Link
-                href="/"
-                className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-[0.98] mt-2"
-            >
-                <RotateCcw size={16} />
-                <span>Pesan Ulang / Kembali ke Menu</span>
-            </Link>
-            </div>
-        )}
-        </div>
-
       </div>
 
-      {/* Rangkuman Detail Pesanan */}
+      {/* RANGKUMAN DETAIL PESANAN */}
       <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-4">
         <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Rangkuman Pesanan</h3>
         
@@ -281,7 +319,6 @@ export default function OrderStatusPage({ params }: { params: Promise<{ orderId:
             Rp {order.totalAmount.toLocaleString('id-ID')}
           </span>
         </div>
-        
       </div>
 
     </div>
