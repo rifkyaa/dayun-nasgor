@@ -16,8 +16,8 @@ export const metadata: Metadata = {
   description: "Sistem Antrean Pemesanan Nasi Goreng Dayun berbasis FCFS",
   icons: {
     icon: '/logo.png',
-    shortcut: '/logo.png',
-    apple: '/logo.png',
+    shortcut: '/logo.ico',
+    apple: '/logo.ico',
   },
 };
 

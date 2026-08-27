@@ -22,10 +22,10 @@ export default function CustomerLandingPage() {
   const [paymentMethod, setPaymentMethod] = useState<'QRIS' | 'KASIR'>('QRIS')
   const [isSubmitting, setIsSubmitting] = useState(false)
   
-  // State Form Pemesan
+  // State Form Pemesan (Set default tableNumber ke '' agar pelanggan memilih sendiri)
   const [customerName, setCustomerName] = useState('')
   const [orderType, setOrderType] = useState<'DINE_IN' | 'TAKEAWAY'>('DINE_IN')
-  const [tableNumber, setTableNumber] = useState('Meja T-01')
+  const [tableNumber, setTableNumber] = useState('') // 👈 Default dikosongkan untuk validasi
   const [isQrisModalOpen, setIsQrisModalOpen] = useState(false)
 
   // 1. Fetch Data Menu & Kategori dari Database MySQL
@@ -38,7 +38,6 @@ export default function CustomerLandingPage() {
         
         const data = await res.json()
 
-        // Flatten data kategori -> items untuk dikonsumsi oleh UI
         const allMenus: MenuItem[] = []
         const categoryList: string[] = ['Semua']
 
@@ -111,7 +110,7 @@ export default function CustomerLandingPage() {
         customerName: customerName.trim(),
         orderType: orderType === 'TAKEAWAY' ? 'TAKE_AWAY' : 'DINE_IN',
         tableNumber: orderType === 'DINE_IN' ? tableNumber : null,
-        paymentMethod: payMethod, // Pasikan nilai yang terkirim ke Prisma sesuai Enum schema
+        paymentMethod: payMethod,
         items: cart.map((item) => ({
           menuId: item.id,
           quantity: item.qty,
@@ -140,8 +139,10 @@ export default function CustomerLandingPage() {
     }
   }
 
-  // 2. Handler tombol "Pesan Sekarang"
+  // 3. Handler Tombol "Pesan Sekarang" (Diberi Anti-Spam Guard)
   const handleSubmitOrder = async () => {
+    if (isSubmitting) return // 👈 PROTEKSI EXTRA: Mencegah spam click
+
     if (!customerName.trim()) {
       alert('Mohon isi Nama Pemesan terlebih dahulu!')
       return
@@ -152,31 +153,29 @@ export default function CustomerLandingPage() {
       return
     }
 
-    // Jika user memilih tab QRIS
     if (paymentMethod === 'QRIS') {
       setIsQrisModalOpen(true)
     } else {
-      // Jika user memilih tab BAYAR DI KASIR
       const createdOrder = await processCreateOrder('TUNAI_KASIR')
       if (createdOrder) {
         setCart([])
         setCustomerName('')
         setIsCartOpen(false)
-        // Redirect ke Live Tracker Status Page
         router.push(`/order/${createdOrder.id}`)
       }
     }
   }
 
-  // 3. Handler saat Modal QRIS berhasil diklik "Sudah Bayar"
+  // 4. Handler Modal QRIS Diklik "Sudah Bayar" (Diberi Anti-Spam Guard)
   const handleQrisSuccessPay = async () => {
+    if (isSubmitting) return // 👈 PROTEKSI EXTRA
+
     const createdOrder = await processCreateOrder('QRIS')
     if (createdOrder) {
       setCart([])
       setCustomerName('')
       setIsCartOpen(false)
       setIsQrisModalOpen(false)
-      // Redirect ke Live Tracker Status Page
       router.push(`/order/${createdOrder.id}`)
     }
   }
@@ -188,14 +187,12 @@ export default function CustomerLandingPage() {
       return matchCat && matchSearch
     })
     .sort((a, b) => {
-      // 1. Utamakan stok yang TERSEDIA di atas yang HABIS
       const aAvailable = a.isAvailable ? 1 : 0
       const bAvailable = b.isAvailable ? 1 : 0
       if (bAvailable !== aAvailable) {
         return bAvailable - aAvailable
       }
 
-      // 2. Jika sama-sama tersedia, utamakan yang BEST SELLER di atas
       const aBest = a.isBestSeller ? 1 : 0
       const bBest = b.isBestSeller ? 1 : 0
       return bBest - aBest
@@ -261,7 +258,7 @@ export default function CustomerLandingPage() {
           </span>
         </div>
 
-        {/* Top Control: Search Bar + Icon Cart */}
+        {/* Search Bar + Mobile Cart Icon */}
         <div className="flex items-center gap-3 mb-6 max-w-3xl">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -288,7 +285,7 @@ export default function CustomerLandingPage() {
           </button>
         </div>
 
-        {/* Banner */}
+        {/* Promo Banner */}
         <div className="relative w-full h-48 md:h-56 rounded-3xl overflow-hidden mb-8 shadow-sm group">
           <Image
             src="https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=1200&q=80"
@@ -306,7 +303,7 @@ export default function CustomerLandingPage() {
           </div>
         </div>
 
-        {/* Categories Dynamic */}
+        {/* Categories Bar */}
         <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-6 no-scrollbar">
           {categories.map((cat) => (
             <button
@@ -323,14 +320,13 @@ export default function CustomerLandingPage() {
           ))}
         </div>
 
-        {/* Loading Indicator */}
+        {/* Catalog Grid */}
         {isLoadingMenu ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3 text-slate-500">
             <Loader2 size={32} className="animate-spin text-[#7A1517]" />
             <span className="text-xs font-semibold">Memuat Menu Dayun Nasgor...</span>
           </div>
         ) : (
-          /* Catalog Grid */
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 pb-28 lg:pb-8">
             {filteredMenu.map((item) => (
               <MenuCard key={item.id} item={item} onAddToCart={handleAddToCart} />
@@ -338,7 +334,7 @@ export default function CustomerLandingPage() {
           </div>
         )}
 
-        {/* Floating Mobile Bottom Cart Bar */}
+        {/* Floating Mobile Cart Button */}
         {totalCartCount > 0 && !isCartOpen && (
           <div className="lg:hidden fixed bottom-4 left-4 right-4 z-30">
             <button
@@ -367,7 +363,7 @@ export default function CustomerLandingPage() {
 
       </main>
 
-      {/* 3. RIGHT FIXED CART SIDEBAR */}
+      {/* 3. RIGHT FIXED CART SIDEBAR (DI-PASS PROP isSubmitting) */}
       <CartSidebar
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
@@ -383,6 +379,7 @@ export default function CustomerLandingPage() {
         tableNumber={tableNumber}
         setTableNumber={setTableNumber}
         onSubmitOrder={handleSubmitOrder}
+        isSubmitting={isSubmitting} // 👈 PASSING STATE LOADING KE CART
       />
 
       {/* 4. QRIS PAYMENT MODAL */}

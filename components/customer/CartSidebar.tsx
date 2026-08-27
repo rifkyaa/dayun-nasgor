@@ -1,4 +1,5 @@
 'use client'
+
 import Image from 'next/image'
 import { 
   X, 
@@ -9,7 +10,8 @@ import {
   QrCode, 
   Banknote, 
   UtensilsCrossed,
-  FileText
+  FileText,
+  Loader2
 } from 'lucide-react'
 import { MenuItem } from './MenuCard'
 import CustomerForm from './CustomerForm'
@@ -34,6 +36,7 @@ interface CartSidebarProps {
   tableNumber: string
   setTableNumber: (table: string) => void
   onSubmitOrder: () => void
+  isSubmitting?: boolean // 👈 DITAMBAHKAN: Prop status loading submit
 }
 
 export default function CartSidebar({
@@ -51,6 +54,7 @@ export default function CartSidebar({
   tableNumber,
   setTableNumber,
   onSubmitOrder,
+  isSubmitting = false, // 👈 DEFAULT VALUE: false
 }: CartSidebarProps) {
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0)
 
@@ -67,7 +71,7 @@ export default function CartSidebar({
         />
       )}
 
-      {/* Cart Drawer - FIX: Menggunakan h-[100dvh] agar fleksibel terhadap address bar browser HP */}
+      {/* Cart Drawer */}
       <aside
         className={`fixed lg:sticky top-0 right-0 h-[100dvh] lg:h-screen w-full sm:w-96 lg:w-80 xl:w-96 bg-white border-l border-gray-100 shadow-2xl lg:shadow-none z-50 lg:z-auto flex flex-col justify-between shrink-0 transition-transform duration-300 ease-in-out ${
           isOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
@@ -78,7 +82,7 @@ export default function CartSidebar({
           <h3 className="text-lg font-bold text-[#7A1517]">Pesanan Saya</h3>
           <button
             onClick={onClose}
-            className="lg:hidden p-1.5 text-gray-400 hover:text-slate-800 rounded-lg transition-colors"
+            className="lg:hidden p-1.5 text-gray-400 hover:text-slate-800 rounded-lg transition-colors cursor-pointer"
           >
             <X size={20} />
           </button>
@@ -110,7 +114,7 @@ export default function CartSidebar({
                           <h5 className="font-bold text-slate-900 text-xs truncate">{item.name}</h5>
                           <button
                             onClick={() => onUpdateQty(item.id, -item.qty)}
-                            className="text-gray-400 hover:text-red-600 transition-colors ml-1"
+                            className="text-gray-400 hover:text-red-600 transition-colors ml-1 cursor-pointer"
                           >
                             <Trash2 size={13} />
                           </button>
@@ -118,11 +122,11 @@ export default function CartSidebar({
 
                         <div className="flex items-center justify-between mt-1.5">
                           <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-1.5 py-0.5">
-                            <button onClick={() => onUpdateQty(item.id, -1)} className="p-0.5 text-slate-600 hover:text-[#7A1517]">
+                            <button onClick={() => onUpdateQty(item.id, -1)} className="p-0.5 text-slate-600 hover:text-[#7A1517] cursor-pointer">
                               <Minus size={11} />
                             </button>
                             <span className="text-xs font-bold w-4 text-center">{item.qty}</span>
-                            <button onClick={() => onUpdateQty(item.id, 1)} className="p-0.5 text-slate-600 hover:text-[#7A1517]">
+                            <button onClick={() => onUpdateQty(item.id, 1)} className="p-0.5 text-slate-600 hover:text-[#7A1517] cursor-pointer">
                               <Plus size={11} />
                             </button>
                           </div>
@@ -160,7 +164,7 @@ export default function CartSidebar({
                 <span className="text-amber-800 font-bold">&gt;</span>
               </div>
 
-              {/* SEPARATE CUSTOMER FORM COMPONENT */}
+              {/* CUSTOMER FORM */}
               <CustomerForm
                 customerName={customerName}
                 setCustomerName={setCustomerName}
@@ -173,7 +177,7 @@ export default function CartSidebar({
           )}
         </div>
 
-        {/* Footer Checkout - FIX: Menambahkan pb-8 lg:pb-4 agar tombol tidak tertutup gesture bar / browser bar HP */}
+        {/* Footer Checkout */}
         {cart.length > 0 && (
           <div className="p-4 pb-8 lg:pb-4 bg-gray-50/90 border-t border-gray-100 space-y-3 shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
             <div className="space-y-1 text-xs text-slate-600">
@@ -198,7 +202,8 @@ export default function CartSidebar({
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('QRIS')}
-                  className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-all ${
+                  disabled={isSubmitting}
+                  className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer ${
                     paymentMethod === 'QRIS'
                       ? 'border-[#7A1517] bg-red-50/50 text-[#7A1517] font-bold ring-1 ring-[#7A1517]'
                       : 'border-gray-200 bg-white text-gray-500 font-semibold'
@@ -211,7 +216,8 @@ export default function CartSidebar({
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('KASIR')}
-                  className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-all ${
+                  disabled={isSubmitting}
+                  className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer ${
                     paymentMethod === 'KASIR'
                       ? 'border-[#7A1517] bg-red-50/50 text-[#7A1517] font-bold ring-1 ring-[#7A1517]'
                       : 'border-gray-200 bg-white text-gray-500 font-semibold'
@@ -223,17 +229,24 @@ export default function CartSidebar({
               </div>
             </div>
 
-            {/* Submit Button */}
+            {/* 💥 SUBMIT BUTTON (DENGAN SPINNER ANIMASI & ANTI SPAM) 💥 */}
             <button
               onClick={onSubmitOrder}
-              disabled={!isFormValid}
-              className={`w-full py-3.5 rounded-xl font-bold flex flex-col items-center justify-center transition-all shadow-md ${
-                !isFormValid
+              disabled={!isFormValid || isSubmitting} // 👈 DISABLE SAAT SUBMITTING
+              className={`w-full py-3.5 rounded-xl font-bold flex flex-row items-center justify-center gap-2 transition-all shadow-md ${
+                !isFormValid || isSubmitting
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
-                  : 'bg-[#7A1517] hover:bg-[#5B0E10] text-white active:scale-[0.98]'
+                  : 'bg-[#7A1517] hover:bg-[#5B0E10] text-white active:scale-[0.98] cursor-pointer'
               }`}
             >
-              <span className="text-xs uppercase tracking-wider">PESAN SEKARANG</span>
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="animate-spin text-white" />
+                  <span className="text-xs uppercase tracking-wider">Memproses Pesanan...</span>
+                </>
+              ) : (
+                <span className="text-xs uppercase tracking-wider">PESAN SEKARANG</span>
+              )}
             </button>
           </div>
         )}
