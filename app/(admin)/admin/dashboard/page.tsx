@@ -233,8 +233,8 @@ export default function DashboardPage() {
                 <div className="pt-2">
                   <div className="grid grid-cols-7 gap-2">
                     <div className="h-10 bg-amber-200 rounded-lg flex items-center justify-center text-[10px] font-bold text-amber-900" title="16:00 - Mulai Buka">16:00</div>
-                    <div className="h-10 bg-[#7A1517] rounded-lg flex items-center justify-center text-[10px] font-bold text-white shadow-xs" title="17:00 - PEAK BANYAK PEMBELI">17:00 🔥</div>
-                    <div className="h-10 bg-[#7A1517] rounded-lg flex items-center justify-center text-[10px] font-bold text-white shadow-xs" title="18:00 - PEAK BANYAK PEMBELI">18:00 🔥</div>
+                    <div className="h-10 bg-[#7A1517] rounded-lg flex items-center justify-center text-[10px] font-bold text-white shadow-xs" title="17:00 - PEAK BANYAK PEMBELI">17:00</div>
+                    <div className="h-10 bg-[#7A1517] rounded-lg flex items-center justify-center text-[10px] font-bold text-white shadow-xs" title="18:00 - PEAK BANYAK PEMBELI">18:00</div>
                     <div className="h-10 bg-amber-200 rounded-lg flex items-center justify-center text-[10px] font-bold text-amber-900" title="19:00 - Normal">19:00</div>
                     <div className="h-10 bg-rose-400 rounded-lg flex items-center justify-center text-[10px] font-bold text-white" title="20:00 - Ramai Makan Malam">20:00</div>
                     <div className="h-10 bg-[#7A1517] rounded-lg flex items-center justify-center text-[10px] font-bold text-white shadow-xs" title="21:00 - Ramai Minggu Malam">21:00</div>
@@ -243,7 +243,7 @@ export default function DashboardPage() {
 
                   <div className="flex justify-between text-[11px] text-gray-400 font-bold mt-2 px-1">
                     <span>16:00 (Buka Dapur)</span>
-                    <span className="text-[#7A1517]">17:00-18:00 (Peak Ramai)</span>
+                    <span className="text-[#7A1517]">17:00-20:00 (Peak Ramai)</span>
                     <span>22:00 (Tutup)</span>
                   </div>
                 </div>
