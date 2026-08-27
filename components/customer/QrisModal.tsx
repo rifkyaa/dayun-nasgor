@@ -64,7 +64,7 @@ export default function QrisModal({
         </div>
 
         <p className="text-[11px] text-slate-500 font-medium">
-          Dapat di-scan menggunakan Gopey, OVO, Dana, ShopeePay, atau Mobile Banking pilihanmu.
+          Dapat di-scan menggunakan Gopay, OVO, Dana, ShopeePay, atau Mobile Banking pilihanmu.
         </p>
 
         <button
