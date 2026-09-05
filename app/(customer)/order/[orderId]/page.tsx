@@ -228,9 +228,9 @@ export default function OrderStatusPage({ params }: { params: Promise<{ orderId:
                 Mohon maaf, pesanan kamu telah dibatalkan oleh pihak kasir/dapur. Silakan hubungi kasir atau buat pesanan baru.
               </p>
             </div>
-            <Link
+            <Link    
               href="/"
-              className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-[0.98]"
+              className="w-full bg-[#7A1517] hover:bg-[#5B0E10] text-white py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-[0.98]"
             >
               <RotateCcw size={16} />
               <span>Pesan Ulang / Kembali ke Menu</span>

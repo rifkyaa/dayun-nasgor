@@ -95,7 +95,7 @@ model Menu {
 
 model Order {
   id            String        @id @default(cuid())
-  orderNumber   String        // e.g. "#A041" (Format unik harian)
+  orderNumber   String       
   customerName  String        // e.g. "Bpk. Ahmad"
   orderType     OrderType     @default(DINE_IN) // DINE_IN atau TAKE_AWAY
   tableNumber   String?       // e.g. "T-12" (null jika TAKE_AWAY)

@@ -288,19 +288,12 @@ export default function CustomerLandingPage() {
         {/* Promo Banner */}
         <div className="relative w-full h-48 md:h-56 rounded-3xl overflow-hidden mb-8 shadow-sm group">
           <Image
-            src="https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=1200&q=80"
+            src="/images/banner.png"
             alt="Promo Special Chicken Katsu"
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-500"
             priority
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent p-6 md:p-8 flex flex-col justify-center text-white">
-            <span className="bg-amber-400 text-slate-950 text-[10px] font-extrabold px-3 py-1 rounded-full w-fit uppercase tracking-wider mb-2">
-              PROMO HARI INI
-            </span>
-            <h3 className="text-2xl md:text-3xl font-extrabold tracking-tight">Special Chicken Katsu</h3>
-            <p className="text-xs md:text-sm text-gray-200 mt-1 max-w-sm">Nikmati perpaduan rempah asli Nasgor Dayun</p>
-          </div>
         </div>
 
         {/* Categories Bar */}
